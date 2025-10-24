@@ -1,0 +1,54 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-DemoApplication<ch01-spring-ai-project>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.DemoApplication",
+      "projectName": "ch01-spring-ai-project",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-DemoApplication<ch02-chat-model-api>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.DemoApplication",
+      "projectName": "ch02-chat-model-api",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-DemoApplication<ch03-prompt>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.DemoApplication",
+      "projectName": "ch03-prompt",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-DemoApplication<ch04-structured-output>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.DemoApplication",
+      "projectName": "ch04-structured-output",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-DemoApplication<ch06-vision-image_generation>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.DemoApplication",
+      "projectName": "ch06-vision-image_generation",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
