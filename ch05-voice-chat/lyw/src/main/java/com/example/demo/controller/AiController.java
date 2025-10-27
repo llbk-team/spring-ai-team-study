@@ -1,0 +1,60 @@
+package com.example.demo.controller;
+
+
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.example.demo.service.AiService;
+
+import lombok.extern.slf4j.Slf4j;
+
+
+
+@RestController
+@RequestMapping("/ai")
+@Slf4j
+public class AiController {
+  @Autowired
+  private AiService aiService;
+
+  @PostMapping(
+    value="/stt",
+    consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+    produces = MediaType.TEXT_PLAIN_VALUE
+  )
+  public String stt(@RequestParam("speech") MultipartFile speech) throws Exception {
+    String originalFileName = speech.getOriginalFilename();
+    byte[] bytes = speech.getBytes();
+    String text = aiService.stt(originalFileName, bytes);
+    return text;
+  }
+
+  @PostMapping(
+    value="/tts",
+    consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+    produces = MediaType.APPLICATION_OCTET_STREAM_VALUE // 바이트 스트림
+  )
+  public byte[] tts(@RequestParam("text") String text) throws Exception {
+    byte[] bytes = aiService.tts(text);
+    return bytes;
+  }
+
+  @PostMapping(
+    value="/chat-text",
+    consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+    produces = MediaType.APPLICATION_JSON_VALUE
+  )
+  public Map<String, String> postMethodName(@RequestParam("question") String question) {
+      Map<String, String> response = aiService.chatText(question);
+      return response;
+  }
+  
+  
+}
