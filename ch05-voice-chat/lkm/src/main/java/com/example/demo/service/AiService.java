@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.ai.audio.transcription.AudioTranscription;
@@ -9,16 +10,27 @@ import org.springframework.ai.audio.transcription.AudioTranscriptionOptions;
 import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
 import org.springframework.ai.audio.transcription.AudioTranscriptionResponse;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.ai.openai.OpenAiAudioSpeechOptions;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest;
+import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest.AudioParameters;
 import org.springframework.ai.openai.api.OpenAiAudioApi.SpeechRequest;
 import org.springframework.ai.openai.audio.speech.SpeechPrompt;
 import org.springframework.ai.openai.audio.speech.SpeechResponse;
+import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MimeType;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -157,9 +169,47 @@ public class AiService {
   }
 
   // 순수 음성 대화(gpt-4o-mini audio)
-  // public byte[] chatVoiceOneModel(byte[] audioBytes, String contentType) throws Exception {
+  public byte[] chatVoiceOneModel(byte[] audioBytes, String contentType) throws Exception {
 
-  //   // Resource 생성
+    // Resource 생성
+    Resource resource = new ByteArrayResource(audioBytes) {
+      @Override
+      public String getFilename() {
+        return "speech.mp3";
+      }
+    };
 
-  // }
+    // UserMessage 생성(음성 포함)
+    UserMessage userMessage = UserMessage.builder()
+      .text("제공되는 음성에 맞는 자연스러운 대화로 이어주세요.")
+      .media(new Media(MimeType.valueOf(contentType), resource))
+      .build();
+
+    // Options
+    ChatOptions chatOptions = OpenAiChatOptions.builder()
+      .model(OpenAiApi.ChatModel.GPT_4_O_MINI_AUDIO_PREVIEW)
+      .outputModalities(List.of("text", "audio"))
+      .outputAudio(new AudioParameters(
+        ChatCompletionRequest.AudioParameters.Voice.ALLOY,
+        ChatCompletionRequest.AudioParameters.AudioResponseFormat.MP3
+      ))
+      .build();
+
+    // 모델 호출 및 응답
+    ChatResponse response = chatClient.prompt()
+      .system("50자 이내로 답변해주세요.")
+      .messages(userMessage)
+      .options(chatOptions)
+      .call()
+      .chatResponse();  // 동기(gpt-4o-mini는 stream을 지원하지 않음)
+
+    // AssistantMessage 생성
+    AssistantMessage assistantMessage = response.getResult().getOutput();
+    // 텍스트 데이터 얻기
+    String textAnswer = assistantMessage.getText();
+    // 음성 데이터 얻기
+    byte[] audioAnswer = assistantMessage.getMedia().get(0).getDataAsByteArray();
+
+    return audioAnswer;
+  }
 }
