@@ -21,6 +21,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 
 @Service
 @Slf4j
@@ -88,6 +89,27 @@ public class AiService {
 
     return bytes;
   }
+  
+  // TTS(Flux)
+  public Flux<byte[]> ttsFlux(String text) {
+
+    // Options
+    OpenAiAudioSpeechOptions speechOptions = OpenAiAudioSpeechOptions.builder()
+      .model("gpt-4o-mini-tts")
+      .voice(SpeechRequest.Voice.ALLOY)
+      .speed(1.0f)
+      .responseFormat(SpeechRequest.AudioResponseFormat.MP3)
+      .build();
+
+    // Prompt
+    SpeechPrompt speechPrompt = new SpeechPrompt(text, speechOptions);
+
+    // 모델 호출 및 응답
+    Flux<SpeechResponse> fluxSpeechResponse = openAiAudioSpeechModel.stream(speechPrompt);
+    Flux<byte[]> fluxBytes = fluxSpeechResponse.map(speechResponse -> speechResponse.getResult().getOutput());
+
+    return fluxBytes;
+  }
 
   // chat-text
   public Map<String, String> chatText(String question) {
@@ -111,4 +133,33 @@ public class AiService {
 
     return map;
   }
+
+  // 순수 음성 대화(STT-LLM-TTS)
+  public Flux<byte[]> chatVoiceSttLlmTts(byte[] audioBytes) {
+
+    // 음성->STT->텍스트
+    // stt() 메소드 호출
+    String textQuestion = stt("speech.mp3", audioBytes);
+
+    // 텍스트->LLM->텍스트
+    // Prompt 생성
+    String textAnswer = chatClient.prompt()
+      .system("50자 이내로 답변해주세요.")
+      .user(textQuestion)
+      .call()
+      .content();
+
+    // 텍스트->TTS->음성
+    // stream으로 흘러오는 tts 메소드 호출
+    Flux<byte[]> flux = ttsFlux(textAnswer);
+
+    return flux;
+  }
+
+  // 순수 음성 대화(gpt-4o-mini audio)
+  // public byte[] chatVoiceOneModel(byte[] audioBytes, String contentType) throws Exception {
+
+  //   // Resource 생성
+
+  // }
 }

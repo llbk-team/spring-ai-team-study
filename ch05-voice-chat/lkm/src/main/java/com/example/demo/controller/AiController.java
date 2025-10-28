@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import java.io.OutputStream;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.service.AiService;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 
 @RestController
 @RequestMapping("/ai")
@@ -58,4 +61,28 @@ public class AiController {
     
     return response;
   }
+
+  // 순수 음성 대화(STT-LLM-TTS)
+  @PostMapping(
+    value = "/chat-voice-stt-llm-tts",
+    consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+    produces = MediaType.APPLICATION_OCTET_STREAM_VALUE
+  ) public void chatVoiceSttLlmTts(
+    @RequestParam("question") MultipartFile question,
+    HttpServletResponse response) throws Exception {
+
+      // 서버로부터 스트리밍으로 음성 데이터를 받아 리턴
+      Flux<byte[]> flux = aiService.chatVoiceSttLlmTts((question.getBytes()));
+
+      // 출력 스트림
+      OutputStream os = response.getOutputStream();
+
+      // 스트림으로 계속 들어오는 바이트 배열 얻어내기
+      for(byte[] chunk : flux.toIterable()) {
+        os.write(chunk);
+        os.flush();
+      }
+    }
+
+  // 순수 음성 대화(gpt-4o-mini audio)
 }
