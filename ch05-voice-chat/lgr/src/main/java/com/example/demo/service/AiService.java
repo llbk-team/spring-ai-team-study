@@ -2,24 +2,36 @@ package com.example.demo.service;
 
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.ai.audio.transcription.AudioTranscriptionOptions;
 import org.springframework.ai.audio.transcription.AudioTranscriptionPrompt;
 import org.springframework.ai.audio.transcription.AudioTranscriptionResponse;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.ai.openai.OpenAiAudioSpeechOptions;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel;
 import org.springframework.ai.openai.OpenAiAudioTranscriptionOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest;
+import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest.AudioParameters;
 import org.springframework.ai.openai.api.OpenAiAudioApi.SpeechRequest;
 import org.springframework.ai.openai.audio.speech.SpeechPrompt;
 import org.springframework.ai.openai.audio.speech.SpeechResponse;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 
 @Service
 @Slf4j
@@ -88,6 +100,74 @@ public class AiService {
 
       return map;
   }
+  public Flux<byte[]> ttsFlux(String text){
+    OpenAiAudioSpeechOptions speechOptions = OpenAiAudioSpeechOptions.builder()
+      .model("gpt-4o-mini-tts")
+      .voice(SpeechRequest.Voice.ALLOY)
+      .responseFormat(SpeechRequest.AudioResponseFormat.MP3)
+      .build();
+
+      SpeechPrompt speechPrompt = new SpeechPrompt(text,speechOptions);
+
+      Flux<SpeechResponse> fluxSpeechResponse = openAiAudioSpeechModel.stream(speechPrompt);
+      Flux<byte[]> fluxBytes = fluxSpeechResponse.map(speechResponse-> speechResponse.getResult().getOutput());
+      return fluxBytes;
+  }
+
+
+
+  public Flux<byte[]> chatVoiceSttLlmTts(byte[] audioBytes){
+    //audiobytes를 텍스트로 바꿔야 한다.
+    //음성-> stt-> text
+    String textQuestion = stt("speech.mp3",audioBytes); //임의의 파일이름
+    String textAnswer = chatClient.prompt()
+      .system("50자 이내로 답변을 한국어로 하세요")
+      .user(textQuestion)
+      .call()
+      .content();
+
+      Flux<byte[]> flux = ttsFlux(textAnswer);
+      return flux;
+  }
+
+  public byte[] chatVoiceOneModel(byte[] audioBytes, String contentType){
+    Resource resource = new ByteArrayResource(audioBytes){
+      @Override
+      public String getFilename() {
+        return "speech.mp3";
+      }
+
+     };
+
+     UserMessage userMessage = UserMessage.builder()
+      .text("제공되는 음성에 맞는 자연스러운 대화로 이어주세요")
+      .media(new Media(MediaType.valueOf(contentType),resource))
+      .build();
+    
+     ChatOptions chatOptions = OpenAiChatOptions.builder()
+      .model(OpenAiApi.ChatModel.GPT_4_O_MINI_AUDIO_PREVIEW)
+      .outputModalities(List.of("text","audio"))
+      .outputAudio(new AudioParameters(
+        ChatCompletionRequest.AudioParameters.Voice.ALLOY,
+        ChatCompletionRequest.AudioParameters.AudioResponseFormat.MP3 ))
+      .build();
+
+     ChatResponse response = chatClient.prompt()
+     .system("50자 이내로 한국어로 답변해주세요.")
+     .messages(userMessage)
+     .options(chatOptions)
+     .call()
+     .chatResponse();//왜 이타입으로 받아야하지?
+
+     AssistantMessage assistantMessage = response.getResult().getOutput();
+     String textAnswer = assistantMessage.getText();
+     log.info("텍스트 응답"+textAnswer);
+     byte[] audioAnswer = assistantMessage.getMedia().get(0).getDataAsByteArray();
+     return audioAnswer;
+
+
+  }
+
 
 
 
