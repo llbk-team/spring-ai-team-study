@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-DemoApplication<ch03-prompt-kbh>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.DemoApplication",
+      "projectName": "ch03-prompt-kbh",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
